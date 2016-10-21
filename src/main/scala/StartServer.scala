@@ -1,3 +1,4 @@
+import org.glassfish.grizzly.http.server.HttpServer
 import org.glassfish.jersey.grizzly2.httpserver.GrizzlyHttpServerFactory
 import org.glassfish.jersey.process.Inflector
 import org.glassfish.jersey.server.ResourceConfig
@@ -6,12 +7,8 @@ import org.glassfish.jersey.server.model.Resource
 import javax.ws.rs.container.ContainerRequestContext
 import javax.ws.rs.core.Response
 import javax.ws.rs.core.UriBuilder
-import org.glassfish.grizzly.http.server.HttpServer
 
-object StartServer extends App {
-  // test at http://localhost:8081/path/test/hello?arg=aze&arg=rrr
-  createServer()
-
+object Starter {
   def createServer(scheme: String = "http",
                    host: String = "0.0.0.0",
                    port: Int = 8081,
