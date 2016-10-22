@@ -2,8 +2,13 @@ import ServerDsl._
 import org.glassfish.grizzly.http.server.HttpServer
 
 object ServerDslDemo extends App {
-  val s: HttpServer = new Server(port = 8081) {
-    resource("/test")
+  val s: HttpServer = Server(port = 8081) {
+    Resource("/hello") {
+      Method("GET") { context =>
+        val args = context.getUriInfo.getQueryParameters.get("arg")
+        s"Hello $args"
+      }
+    }
   }
   s.start()
   io.StdIn.readLine()
