@@ -10,43 +10,45 @@ import javax.ws.rs.core.UriBuilder
 import scala.collection.mutable.Buffer
 
 object ServerDsl {
-  implicit def buildServer(s: Server) = s.build
-
-  case class Resource(name: String)(methods: Method*)
-
-  case class Method(name: String)(handler: ContainerRequestContext => String) {
-    def addToResource(res: JerseyResource.Builder) =
-      res
-        .addMethod(name)
-        .handledBy(new Inflector[ContainerRequestContext, Response] {
-          def apply(context: ContainerRequestContext) = {
-            Response.ok(handler(context)).build
-          }
-        })
+  def hello(context: ContainerRequestContext) = {
+    val args = context.getUriInfo.getQueryParameters.get("arg")
+    s"Hello $args"
   }
+  
+   def hola(context: ContainerRequestContext) = {
+    s"Hola !"
+  }
+
+  def GET = Method("GET") _
+  def POST = Method("POST") _
+
+  case class Resource(name: String)(val methods: Method*)
+
+  case class Method(name: String)(val handler: ContainerRequestContext => String)
 
   case class Server(scheme: String = "http",
                     host: String = "0.0.0.0",
                     port: Int = 8081,
-                    path: String = "/path")(resources: Resource*) {
+                    root: String = "/path",
+                    path: String = "/test")(resources: Resource*) {
 
     def build = {
-      val resourceBuilder = JerseyResource.builder("/test")
+      val resourceBuilder = JerseyResource.builder(path)
 
-      for (res <- resources) {
-        resourceBuilder.addChildResource(res.name)
-          .addMethod("GET")
-          .handledBy(new Inflector[ContainerRequestContext, Response] {
-            def apply(context: ContainerRequestContext) = {
-              val args = context.getUriInfo.getQueryParameters.get("arg")
-              Response.ok(s"Hello $args").build
-            }
-          })
-      }
+      for {
+        res <- resources
+        m <- res.methods
+      } resourceBuilder.addChildResource(res.name)
+        .addMethod(m.name)
+        .handledBy(new Inflector[ContainerRequestContext, Response] {
+          def apply(context: ContainerRequestContext) = {
+            Response.ok(m.handler(context)).build
+          }
+        })
 
       val resourceConfig = (new ResourceConfig).registerResources(resourceBuilder.build)
 
-      val uri = UriBuilder.fromPath(path).host(host).port(port).scheme(scheme).build()
+      val uri = UriBuilder.fromPath(root).host(host).port(port).scheme(scheme).build()
       GrizzlyHttpServerFactory.createHttpServer(uri, resourceConfig, true)
     }
   }
