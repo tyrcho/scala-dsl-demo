@@ -7,6 +7,7 @@ import org.glassfish.jersey.server.model.Resource
 import javax.ws.rs.container.ContainerRequestContext
 import javax.ws.rs.core.Response
 import javax.ws.rs.core.UriBuilder
+import javax.ws.rs.core.MediaType
 
 object Starter {
   def createServer(scheme: String = "http",
@@ -15,13 +16,27 @@ object Starter {
                    path: String = "/path"): HttpServer = {
 
     val resourceBuilder = Resource.builder("/test")
+    val dataReceived = collection.mutable.Map.empty[String, String]
 
-    resourceBuilder.addChildResource("/hello")
+    resourceBuilder.addChildResource("/helloGet")
       .addMethod("GET")
       .handledBy(new Inflector[ContainerRequestContext, Response] {
         def apply(context: ContainerRequestContext) = {
-          val args = context.getUriInfo.getQueryParameters.get("arg")
-          Response.ok(s"Hello $args").build
+          val arg = context.getUriInfo.getQueryParameters.get("arg").get(0)
+          val data = dataReceived.getOrElse(arg, s"no data for $arg")
+          Response.ok(s"Hello $arg \n$data").build
+        }
+      })
+
+    resourceBuilder.addChildResource("/helloPost")
+      .addMethod("POST")
+      .consumes(MediaType.APPLICATION_JSON)
+      .handledBy(new Inflector[ContainerRequestContext, Response] {
+        def apply(context: ContainerRequestContext): Response = {
+          val id = context.getUriInfo.getQueryParameters.get("id").get(0)
+          val data = io.Source.fromInputStream(context.getEntityStream).getLines.mkString("\n")
+          dataReceived += id -> data
+          Response.ok("Message received : " + data).build
         }
       })
 
